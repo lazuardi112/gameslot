@@ -213,16 +213,15 @@ app.get('/api/admin/settings', authenticateToken, (req, res) => {
 
 // Update API settings
 app.post('/api/admin/settings', authenticateToken, (req, res) => {
-  const { api_key, device_id } = req.body;
+  const { api_key, device_id, flutter_sdk_path } = req.body;
   db.run("UPDATE settings SET value = ? WHERE key = 'api_key'", [api_key], (err) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
+    if (err) return res.status(500).json({ error: err.message });
     db.run("UPDATE settings SET value = ? WHERE key = 'device_id'", [device_id], (err) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ message: 'Settings updated successfully' });
+      if (err) return res.status(500).json({ error: err.message });
+      db.run("UPDATE settings SET value = ? WHERE key = 'flutter_sdk_path'", [flutter_sdk_path], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Settings updated successfully' });
+      });
     });
   });
 });

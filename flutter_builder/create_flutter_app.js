@@ -12,33 +12,46 @@ if (!appId) {
 }
 
 const main = async () => {
-    db.get('SELECT * FROM apps WHERE id = ?', [appId], async (err, app) => {
+    db.get('SELECT value FROM settings WHERE key = ?', ['flutter_sdk_path'], async (err, setting) => {
         if (err) {
             console.error(err);
             process.exit(1);
         }
-        if (!app) {
-            console.error('App not found');
+        const flutterSdkPath = setting.value;
+        if (!flutterSdkPath) {
+            console.error('Flutter SDK path is not configured in admin panel');
+            db.run('UPDATE apps SET status = ? WHERE id = ?', ['failed', appId]);
             process.exit(1);
         }
+        const flutterExecutable = path.join(flutterSdkPath, 'bin/flutter');
 
-        const { app_name, package_name, app_url, icon_path } = app;
-        const projectPath = path.join(__dirname, 'builds', app_name);
+        db.get('SELECT * FROM apps WHERE id = ?', [appId], async (err, app) => {
+            if (err) {
+                console.error(err);
+                process.exit(1);
+            }
+            if (!app) {
+                console.error('App not found');
+                process.exit(1);
+            }
 
-        try {
-            // 1. Create Flutter project
-            console.log(`Creating Flutter project for ${app_name}...`);
-            await execute(`flutter create --org ${package_name.split('.').slice(0, 2).join('.')} ${projectPath}`);
+            const { app_name, package_name, app_url, icon_path } = app;
+            const projectPath = path.join(__dirname, 'builds', app_name);
 
-            // 2. Replace app icon
-            console.log('Replacing app icon...');
-            const iconDest = path.join(projectPath, 'android/app/src/main/res/mipmap-hdpi/ic_launcher.png');
-            await fs.copy(icon_path, iconDest);
+            try {
+                // 1. Create Flutter project
+                console.log(`Creating Flutter project for ${app_name}...`);
+                await execute(`${flutterExecutable} create --org ${package_name.split('.').slice(0, 2).join('.')} ${projectPath}`);
 
-            // 3. Modify main.dart
-            console.log('Modifying main.dart...');
-            const mainDartPath = path.join(projectPath, 'lib/main.dart');
-            const mainDartContent = `
+                // 2. Replace app icon
+                console.log('Replacing app icon...');
+                const iconDest = path.join(projectPath, 'android/app/src/main/res/mipmap-hdpi/ic_launcher.png');
+                await fs.copy(icon_path, iconDest);
+
+                // 3. Modify main.dart
+                console.log('Modifying main.dart...');
+                const mainDartPath = path.join(projectPath, 'lib/main.dart');
+                const mainDartContent = `
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -61,39 +74,40 @@ class MyApp extends StatelessWidget {
   }
 }
 `;
-            await fs.writeFile(mainDartPath, mainDartContent);
+                await fs.writeFile(mainDartPath, mainDartContent);
 
-            // Add webview_flutter dependency
-            await execute(`cd ${projectPath} && flutter pub add webview_flutter`);
+                // Add webview_flutter dependency
+                await execute(`cd ${projectPath} && ${flutterExecutable} pub add webview_flutter`);
 
 
-            // 4. Build APK and AAB
-            console.log('Building APK...');
-            await execute(`cd ${projectPath} && flutter build apk --release`);
-            const apkPath = path.join(projectPath, `build/app/outputs/flutter-apk/app-release.apk`);
+                // 4. Build APK and AAB
+                console.log('Building APK...');
+                await execute(`cd ${projectPath} && ${flutterExecutable} build apk --release`);
+                const apkPath = path.join(projectPath, `build/app/outputs/flutter-apk/app-release.apk`);
 
-            console.log('Building AAB...');
-            await execute(`cd ${projectPath} && flutter build appbundle --release`);
-            const aabPath = path.join(projectPath, `build/app/outputs/bundle/release/app-release.aab`);
+                console.log('Building AAB...');
+                await execute(`cd ${projectPath} && ${flutterExecutable} build appbundle --release`);
+                const aabPath = path.join(projectPath, `build/app/outputs/bundle/release/app-release.aab`);
 
-            // 5. Update database
-            console.log('Updating database...');
-            db.run(
-                'UPDATE apps SET status = ?, apk_path = ?, aab_path = ? WHERE id = ?',
-                ['completed', apkPath, aabPath, appId],
-                (err) => {
-                    if (err) {
-                        console.error(err);
-                    } else {
-                        console.log('App built successfully!');
+                // 5. Update database
+                console.log('Updating database...');
+                db.run(
+                    'UPDATE apps SET status = ?, apk_path = ?, aab_path = ? WHERE id = ?',
+                    ['completed', apkPath, aabPath, appId],
+                    (err) => {
+                        if (err) {
+                            console.error(err);
+                        } else {
+                            console.log('App built successfully!');
+                        }
                     }
-                }
-            );
+                );
 
-        } catch (error) {
-            console.error('Error building app:', error);
-            db.run('UPDATE apps SET status = ? WHERE id = ?', ['failed', appId]);
-        }
+            } catch (error) {
+                console.error('Error building app:', error);
+                db.run('UPDATE apps SET status = ? WHERE id = ?', ['failed', appId]);
+            }
+        });
     });
 };
 

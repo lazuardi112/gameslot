@@ -38,6 +38,7 @@ db.serialize(() => {
   // Insert default api key and device id if not exists
   db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('api_key', '')");
   db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('device_id', '')");
+  db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('flutter_sdk_path', '')");
 });
 
 module.exports = db;
