@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
@@ -11,7 +12,14 @@ const db = require('./database');
 const app = express();
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use('/uploads', express.static('uploads'));
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+app.use('/uploads', express.static(uploadsDir));
+app.use(express.static(path.join(__dirname, '../client')));
 
 
 const PORT = process.env.PORT || 3000;
@@ -19,7 +27,7 @@ const JWT_SECRET = 'your-very-secret-key'; // In production, use an environment 
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/')
+    cb(null, uploadsDir)
   },
   filename: function (req, file, cb) {
     cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
@@ -74,8 +82,6 @@ app.get('/login', (req, res) => {
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/admin.html'));
 });
-
-app.use(express.static(path.join(__dirname, '../client')));
 
 
 // Register route
@@ -264,7 +270,7 @@ app.get('/api/user', authenticateToken, (req, res) => {
 // Create app
 app.post('/api/apps', authenticateToken, upload.single('app_icon'), (req, res) => {
     const { app_name, package_name, app_url } = req.body;
-    const icon_path = req.file.path;
+    const icon_path = path.resolve(req.file.path);
     const userId = req.user.id;
 
     db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
@@ -289,7 +295,7 @@ app.post('/api/apps', authenticateToken, upload.single('app_icon'), (req, res) =
                 const appId = this.lastID;
                 console.log(`App creation started for app ID: ${appId}`);
 
-                const flutterBuilder = spawn('node', ['../flutter_builder/create_flutter_app.js', appId]);
+                const flutterBuilder = spawn('node', [path.join(__dirname, '../flutter_builder/create_flutter_app.js'), appId]);
 
                 flutterBuilder.stdout.on('data', (data) => {
                     console.log(`Flutter Builder: ${data}`);

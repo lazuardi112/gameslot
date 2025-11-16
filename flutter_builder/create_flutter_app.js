@@ -32,9 +32,8 @@ const main = async () => {
 
             // 2. Replace app icon
             console.log('Replacing app icon...');
-            const iconSource = path.join(__dirname, '../server', icon_path);
             const iconDest = path.join(projectPath, 'android/app/src/main/res/mipmap-hdpi/ic_launcher.png');
-            await fs.copy(iconSource, iconDest);
+            await fs.copy(icon_path, iconDest);
 
             // 3. Modify main.dart
             console.log('Modifying main.dart...');
