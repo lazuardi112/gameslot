@@ -59,5 +59,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    try {
+        const response = await fetch('/logout', { method: 'POST' });
+        if (response.ok) {
+            window.location.href = '/login';
+        } else {
+            alert('Logout failed. Please try again.');
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        alert('An error occurred during logout.');
+    }
+  });
+
   fetchUserData();
 });

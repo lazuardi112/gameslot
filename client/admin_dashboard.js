@@ -7,8 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('/api/admin/settings', { credentials: 'include' });
       const settings = await response.json();
-      document.getElementById('api-key').value = settings.api_key || '';
-      document.getElementById('device-id').value = settings.device_id || '';
       document.getElementById('flutter-sdk-path').value = settings.flutter_sdk_path || '';
     } catch (error) {
       console.error(error);
@@ -39,18 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Handle API settings form submission
   apiSettingsForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const apiKey = document.getElementById('api-key').value;
-    const deviceId = document.getElementById('device-id').value;
     const flutterSdkPath = document.getElementById('flutter-sdk-path').value;
 
     try {
       await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: apiKey, device_id: deviceId, flutter_sdk_path: flutterSdkPath }),
+        body: JSON.stringify({ flutter_sdk_path: flutterSdkPath }),
         credentials: 'include'
       });
-      alert('API settings updated successfully');
+      alert('Settings updated successfully');
     } catch (error) {
       console.error(error);
       alert('Failed to update API settings');

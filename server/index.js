@@ -8,6 +8,9 @@ const { spawn } = require('child_process');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const db = require('./database');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 
 const app = express();
 app.use(bodyParser.json());
@@ -34,11 +37,6 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
-
-// Function to generate a random 6-digit OTP
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
 
 // JWT Authentication Middleware
 const authenticateToken = (req, res, next) => {
@@ -71,12 +69,16 @@ app.get('/', verifyTokenOptional, (req, res) => {
     if (req.user) {
         res.sendFile(path.join(__dirname, '../client/dashboard.html'));
     } else {
-        res.sendFile(path.join(__dirname, '../client/index.html'));
+        res.sendFile(path.join(__dirname, '../client/login.html'));
     }
 });
 
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
+    res.sendFile(path.join(__dirname, '../client/login.html'));
+});
+
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/register.html'));
 });
 
 app.get('/admin', (req, res) => {
@@ -86,103 +88,80 @@ app.get('/admin', (req, res) => {
 
 // Register route
 app.post('/register', (req, res) => {
-  const { whatsapp_number } = req.body;
+    const { whatsapp_number, password } = req.body;
 
-  if (!whatsapp_number) {
-    return res.status(400).json({ error: 'WhatsApp number is required' });
-  }
-
-  const otp = generateOTP();
-
-  // Check if user exists, if so update OTP, otherwise insert new user
-  db.get('SELECT * FROM users WHERE whatsapp_number = ?', [whatsapp_number], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+    if (!whatsapp_number || !password) {
+        return res.status(400).json({ error: 'WhatsApp number and password are required' });
     }
 
-    if (row) {
-      db.run('UPDATE users SET otp = ? WHERE whatsapp_number = ?', [otp, whatsapp_number], (err) => {
+    // Check if user already exists
+    console.log(`[Register] Checking for user: ${whatsapp_number}`);
+    db.get('SELECT * FROM users WHERE whatsapp_number = ?', [whatsapp_number], (err, row) => {
         if (err) {
-          return res.status(500).json({ error: err.message });
+            console.error('[Register] DB Error (SELECT):', err);
+            return res.status(500).json({ error: err.message });
         }
-      });
-    } else {
-      db.run('INSERT INTO users (whatsapp_number, otp) VALUES (?, ?)', [whatsapp_number, otp], (err) => {
-        if (err) {
-          return res.status(500).json({ error: err.message });
-        }
-      });
-    }
-
-    // Send OTP via WhatsApp
-    db.get('SELECT value FROM settings WHERE key = ?', ['api_key'], (err, apiKeyRow) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      db.get('SELECT value FROM settings WHERE key = ?', ['device_id'], (err, deviceIdRow) => {
-        if (err) {
-          return res.status(500).json({ error: err.message });
+        if (row) {
+            console.log(`[Register] User already exists: ${whatsapp_number}`);
+            return res.status(409).json({ error: 'User with this WhatsApp number already exists.' });
         }
 
-        const apiKey = apiKeyRow.value;
-        const deviceId = deviceIdRow.value;
+        console.log(`[Register] User does not exist. Hashing password for: ${whatsapp_number}`);
+        // Hash the password
+        bcrypt.hash(password, saltRounds, (err, hash) => {
+            if (err) {
+                console.error("[Register] Bcrypt hash error:", err);
+                return res.status(500).json({ error: 'Error hashing password' });
+            }
 
-        if (!apiKey || !deviceId) {
-            return res.status(500).json({ error: 'API key or device ID not configured in admin panel' });
-        }
-
-        const data = JSON.stringify({
-          "deviceId": deviceId,
-          "to": whatsapp_number,
-          "message": `Your OTP is: ${otp}`
+            console.log(`[Register] Password hashed. Inserting new user: ${whatsapp_number}`);
+            // Insert new user with hashed password
+            db.run('INSERT INTO users (whatsapp_number, password) VALUES (?, ?)', [whatsapp_number, hash], function(err) {
+                if (err) {
+                    console.error('[Register] DB Error (INSERT):', err);
+                    return res.status(500).json({ error: err.message });
+                }
+                console.log(`[Register] User registered successfully: ${whatsapp_number} with ID: ${this.lastID}`);
+                res.status(201).json({ message: 'User registered successfully' });
+            });
         });
-
-        const config = {
-          method: 'post',
-          url: 'https://xcd.xcreate.my.id/api/v1/message/send-text',
-          headers: {
-            'x-api-key': apiKey,
-            'Content-Type': 'application/json'
-          },
-          data: data
-        };
-
-        axios(config)
-          .then(function (response) {
-            console.log(JSON.stringify(response.data));
-            res.json({ message: 'OTP sent successfully' });
-          })
-          .catch(function (error) {
-            console.log(error);
-            res.status(500).json({ error: 'Failed to send OTP' });
-          });
-      });
     });
-  });
 });
 
 
 // Login route
 app.post('/login', (req, res) => {
-  const { whatsapp_number, otp } = req.body;
+    const { whatsapp_number, password } = req.body;
 
-  if (!whatsapp_number || !otp) {
-    return res.status(400).json({ error: 'WhatsApp number and OTP are required' });
-  }
-
-  db.get('SELECT * FROM users WHERE whatsapp_number = ? AND otp = ?', [whatsapp_number, otp], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+    if (!whatsapp_number || !password) {
+        return res.status(400).json({ error: 'WhatsApp number and password are required' });
     }
 
-    if (row) {
-      const user = { id: row.id, whatsapp_number: row.whatsapp_number };
-      const token = jwt.sign(user, JWT_SECRET, { expiresIn: '1h' });
-      res.cookie('token', token, { httpOnly: true, secure: false }).json({ message: 'Login successful' });
-    } else {
-      res.status(401).json({ error: 'Invalid OTP' });
-    }
-  });
+    db.get('SELECT * FROM users WHERE whatsapp_number = ?', [whatsapp_number], (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Compare password with hash
+        bcrypt.compare(password, user.password, (err, result) => {
+            if (err || !result) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+
+            // Passwords match, create JWT
+            const userPayload = { id: user.id, whatsapp_number: user.whatsapp_number };
+            const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '1h' });
+            res.cookie('token', token, { httpOnly: true, secure: false }).json({ message: 'Login successful' });
+        });
+    });
+});
+
+// Logout route
+app.post('/logout', (req, res) => {
+    res.clearCookie('token').json({ message: 'Logout successful' });
 });
 
 // Admin login route
@@ -213,16 +192,12 @@ app.get('/api/admin/settings', authenticateToken, (req, res) => {
 
 // Update API settings
 app.post('/api/admin/settings', authenticateToken, (req, res) => {
-  const { api_key, device_id, flutter_sdk_path } = req.body;
-  db.run("UPDATE settings SET value = ? WHERE key = 'api_key'", [api_key], (err) => {
+  const { flutter_sdk_path } = req.body;
+  // Since we only have one setting now, we can simplify this.
+  // In a real app, you might loop through an array of keys.
+  db.run("UPDATE settings SET value = ? WHERE key = 'flutter_sdk_path'", [flutter_sdk_path], (err) => {
     if (err) return res.status(500).json({ error: err.message });
-    db.run("UPDATE settings SET value = ? WHERE key = 'device_id'", [device_id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      db.run("UPDATE settings SET value = ? WHERE key = 'flutter_sdk_path'", [flutter_sdk_path], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Settings updated successfully' });
-      });
-    });
+    res.json({ message: 'Settings updated successfully' });
   });
 });
 

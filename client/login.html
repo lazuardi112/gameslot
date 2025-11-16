@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <main class="container">
+        <nav>
+            <ul>
+                <li><strong>WebApp Builder</strong></li>
+            </ul>
+            <ul>
+                <li><a href="/login.html">Login</a></li>
+                <li><a href="/register.html">Register</a></li>
+            </ul>
+        </nav>
+        <article>
+            <h1 class="text-center">Login</h1>
+            <form id="loginForm">
+                <label for="whatsapp_number">WhatsApp Number</label>
+                <input type="text" id="whatsapp_number" name="whatsapp_number" placeholder="Enter your WhatsApp number" required>
+
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+
+                <button type="submit">Login</button>
+            </form>
+            <div id="message" class="text-center"></div>
+             <p class="text-center">Don't have an account? <a href="/register.html">Register here</a>.</p>
+        </article>
+    </main>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const whatsapp_number = document.getElementById('whatsapp_number').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ whatsapp_number, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageDiv.textContent = 'Login successful! Redirecting to dashboard...';
+                    messageDiv.className = 'pico-color-green-500';
+                    window.location.href = '/';
+                } else {
+                    messageDiv.textContent = `Error: ${data.error}`;
+                    messageDiv.className = 'pico-color-red-500';
+                }
+            } catch (error) {
+                messageDiv.textContent = 'An unexpected error occurred. Please try again.';
+                messageDiv.className = 'pico-color-red-500';
+            }
+        });
+    </script>
+</body>
+</html>

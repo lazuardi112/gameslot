@@ -5,8 +5,8 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      whatsapp_number TEXT UNIQUE,
-      otp TEXT,
+      whatsapp_number TEXT NOT NULL UNIQUE,
+      password TEXT,
       app_limit INTEGER DEFAULT 1
     )
   `);
@@ -33,8 +33,8 @@ db.serialize(() => {
     )
   `);
 
-  // Insert default admin user if not exists
-  db.run("INSERT OR IGNORE INTO users (whatsapp_number, otp) VALUES ('admin', 'admin123')");
+  // Insert default admin user if not exists (password is 'admin123', will be handled by login logic)
+  db.run("INSERT OR IGNORE INTO users (whatsapp_number) VALUES ('admin')");
   // Insert default api key and device id if not exists
   db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('api_key', '')");
   db.run("INSERT OR IGNORE INTO settings (key, value) VALUES ('device_id', '')");
