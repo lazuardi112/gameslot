@@ -5,11 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/user', {
+      const response = await fetch('/api/user', {
           credentials: 'include' // Important for sending cookies
       });
       if (response.status === 401) {
-          window.location.href = 'index.html';
+          window.location.href = '/login';
           return;
       }
       const userData = await response.json();
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const row = document.createElement('tr');
         let downloadLink = '';
         if (app.status === 'completed') {
-            downloadLink = `<a href="http://localhost:3000/download/${app.id}/apk">APK</a> | <a href="http://localhost:3000/download/${app.id}/aab">AAB</a>`;
+            downloadLink = `<a href="/download/${app.id}/apk">APK</a> | <a href="/download/${app.id}/aab">AAB</a>`;
         }
         row.innerHTML = `
           <td>${app.app_name}</td>
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData(event.target);
 
     try {
-      const response = await fetch('http://localhost:3000/api/apps', {
+      const response = await fetch('/api/apps', {
         method: 'POST',
         body: formData,
         credentials: 'include' // Important for sending cookies

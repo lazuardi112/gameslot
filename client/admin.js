@@ -6,7 +6,7 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
   const errorMessage = document.getElementById('error-message');
 
   try {
-    const response = await fetch('http://localhost:3000/api/admin/login', {
+    const response = await fetch('/api/admin/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -15,7 +15,7 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
     });
 
     if (response.ok) {
-      window.location.href = 'admin_dashboard.html';
+      window.location.href = '/admin_dashboard.html';
     } else {
       const data = await response.json();
       errorMessage.textContent = data.error;

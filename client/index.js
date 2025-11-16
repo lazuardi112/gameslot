@@ -4,7 +4,7 @@ document.getElementById('register-form').addEventListener('submit', async (event
   const message = document.getElementById('message');
 
   try {
-    const response = await fetch('http://localhost:3000/register', {
+    const response = await fetch('/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ whatsapp_number }),
@@ -24,14 +24,14 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
   const message = document.getElementById('message');
 
   try {
-    const response = await fetch('http://localhost:3000/login', {
+    const response = await fetch('/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ whatsapp_number, otp }),
     });
 
     if (response.ok) {
-      window.location.href = 'dashboard.html';
+      window.location.href = '/';
     } else {
       const data = await response.json();
       message.textContent = data.error;

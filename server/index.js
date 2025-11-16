@@ -1,6 +1,5 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const cors = require('cors');
 const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
@@ -10,7 +9,6 @@ const cookieParser = require('cookie-parser');
 const db = require('./database');
 
 const app = express();
-app.use(cors({ credentials: true, origin: 'http://localhost:8000' }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
@@ -45,6 +43,39 @@ const authenticateToken = (req, res, next) => {
         next();
     });
 };
+
+// Optional JWT verification for root route
+const verifyTokenOptional = (req, res, next) => {
+    const token = req.cookies.token;
+    if (token == null) {
+        req.user = null;
+    } else {
+        jwt.verify(token, JWT_SECRET, (err, user) => {
+            req.user = err ? null : user;
+        });
+    }
+    next();
+};
+
+
+// Frontend Routes
+app.get('/', verifyTokenOptional, (req, res) => {
+    if (req.user) {
+        res.sendFile(path.join(__dirname, '../client/dashboard.html'));
+    } else {
+        res.sendFile(path.join(__dirname, '../client/index.html'));
+    }
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/index.html'));
+});
+
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/admin.html'));
+});
+
+app.use(express.static(path.join(__dirname, '../client')));
 
 
 // Register route
