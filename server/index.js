@@ -5,15 +5,19 @@ const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const { spawn } = require('child_process');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const db = require('./database');
 
 const app = express();
-app.use(cors());
+app.use(cors({ credentials: true, origin: 'http://localhost:8000' }));
 app.use(bodyParser.json());
+app.use(cookieParser());
 app.use('/uploads', express.static('uploads'));
 
 
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = 'your-very-secret-key'; // In production, use an environment variable
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -29,6 +33,19 @@ const upload = multer({ storage: storage });
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
+// JWT Authentication Middleware
+const authenticateToken = (req, res, next) => {
+    const token = req.cookies.token;
+    if (token == null) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
 
 // Register route
 app.post('/register', (req, res) => {
@@ -122,8 +139,9 @@ app.post('/login', (req, res) => {
     }
 
     if (row) {
-      // Here you would typically create a session or JWT
-      res.json({ message: 'Login successful', user: { id: row.id, whatsapp_number: row.whatsapp_number } });
+      const user = { id: row.id, whatsapp_number: row.whatsapp_number };
+      const token = jwt.sign(user, JWT_SECRET, { expiresIn: '1h' });
+      res.cookie('token', token, { httpOnly: true, secure: false }).json({ message: 'Login successful' });
     } else {
       res.status(401).json({ error: 'Invalid OTP' });
     }
@@ -134,14 +152,16 @@ app.post('/login', (req, res) => {
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
     if (username === 'admin' && password === 'admin123') {
-        res.json({ message: 'Admin login successful' });
+        const adminUser = { id: 0, username: 'admin' };
+        const token = jwt.sign(adminUser, JWT_SECRET, { expiresIn: '1h' });
+        res.cookie('token', token, { httpOnly: true, secure: false }).json({ message: 'Admin login successful' });
     } else {
         res.status(401).json({ error: 'Invalid admin credentials' });
     }
 });
 
 // Get API settings
-app.get('/api/admin/settings', (req, res) => {
+app.get('/api/admin/settings', authenticateToken, (req, res) => {
   db.all('SELECT * FROM settings', (err, rows) => {
     if (err) {
       return res.status(500).json({ error: err.message });
@@ -155,7 +175,7 @@ app.get('/api/admin/settings', (req, res) => {
 });
 
 // Update API settings
-app.post('/api/admin/settings', (req, res) => {
+app.post('/api/admin/settings', authenticateToken, (req, res) => {
   const { api_key, device_id } = req.body;
   db.run("UPDATE settings SET value = ? WHERE key = 'api_key'", [api_key], (err) => {
     if (err) {
@@ -171,7 +191,7 @@ app.post('/api/admin/settings', (req, res) => {
 });
 
 // Get all users
-app.get('/api/admin/users', (req, res) => {
+app.get('/api/admin/users', authenticateToken, (req, res) => {
   db.all('SELECT id, whatsapp_number, app_limit FROM users', (err, rows) => {
     if (err) {
       return res.status(500).json({ error: err.message });
@@ -181,7 +201,7 @@ app.get('/api/admin/users', (req, res) => {
 });
 
 // Update user app limit
-app.post('/api/admin/users/:id/limit', (req, res) => {
+app.post('/api/admin/users/:id/limit', authenticateToken, (req, res) => {
   const { id } = req.params;
   const { limit } = req.body;
   db.run('UPDATE users SET app_limit = ? WHERE id = ?', [limit, id], (err) => {
@@ -193,9 +213,8 @@ app.post('/api/admin/users/:id/limit', (req, res) => {
 });
 
 // Get user data
-app.get('/api/user/:whatsapp_number', (req, res) => {
-    const { whatsapp_number } = req.params;
-    db.get('SELECT * FROM users WHERE whatsapp_number = ?', [whatsapp_number], (err, user) => {
+app.get('/api/user', authenticateToken, (req, res) => {
+    db.get('SELECT * FROM users WHERE id = ?', [req.user.id], (err, user) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
@@ -212,25 +231,26 @@ app.get('/api/user/:whatsapp_number', (req, res) => {
 });
 
 // Create app
-app.post('/api/apps', upload.single('app_icon'), (req, res) => {
-    const { whatsapp_number, app_name, package_name, app_url } = req.body;
+app.post('/api/apps', authenticateToken, upload.single('app_icon'), (req, res) => {
+    const { app_name, package_name, app_url } = req.body;
     const icon_path = req.file.path;
+    const userId = req.user.id;
 
-    db.get('SELECT * FROM users WHERE whatsapp_number = ?', [whatsapp_number], (err, user) => {
+    db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        db.all('SELECT * FROM apps WHERE user_id = ?', [user.id], (err, apps) => {
+        db.all('SELECT * FROM apps WHERE user_id = ?', [userId], (err, apps) => {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
             if (apps.length >= user.app_limit) {
                 return res.status(403).json({ error: 'App limit reached' });
             }
-            db.run('INSERT INTO apps (user_id, app_name, package_name, app_url, icon_path, status) VALUES (?, ?, ?, ?, ?, ?)', [user.id, app_name, package_name, app_url, icon_path, 'pending'], function(err) {
+            db.run('INSERT INTO apps (user_id, app_name, package_name, app_url, icon_path, status) VALUES (?, ?, ?, ?, ?, ?)', [userId, app_name, package_name, app_url, icon_path, 'pending'], function(err) {
                 if (err) {
                     return res.status(500).json({ error: err.message });
                 }

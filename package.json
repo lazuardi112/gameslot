@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-flutter-webapp-builder",
+  "version": "1.0.0",
+  "description": "A full-stack web application to build Flutter webview apps.",
+  "scripts": {
+    "install": "cd server && npm install && cd ../flutter_builder && npm install",
+    "start": "cd server && node index.js"
+  },
+  "keywords": [
+    "flutter",
+    "nodejs",
+    "webapp",
+    "builder"
+  ],
+  "author": "",
+  "license": "ISC"
+}

@@ -31,8 +31,6 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
     });
 
     if (response.ok) {
-      // Store user info (e.g., in localStorage) and redirect
-      localStorage.setItem('whatsapp_number', whatsapp_number);
       window.location.href = 'dashboard.html';
     } else {
       const data = await response.json();

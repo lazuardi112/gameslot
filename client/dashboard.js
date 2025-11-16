@@ -1,18 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const whatsappNumber = localStorage.getItem('whatsapp_number');
-  if (!whatsappNumber) {
-    window.location.href = 'index.html';
-    return;
-  }
-
-  document.getElementById('whatsapp-number').textContent = whatsappNumber;
+  const whatsappNumberSpan = document.getElementById('whatsapp-number');
+  const appLimitSpan = document.getElementById('app-limit');
   const appList = document.getElementById('app-list');
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch(`http://localhost:3000/api/user/${whatsappNumber}`);
+      const response = await fetch('http://localhost:3000/api/user', {
+          credentials: 'include' // Important for sending cookies
+      });
+      if (response.status === 401) {
+          window.location.href = 'index.html';
+          return;
+      }
       const userData = await response.json();
-      document.getElementById('app-limit').textContent = userData.app_limit;
+      whatsappNumberSpan.textContent = userData.whatsapp_number;
+      appLimitSpan.textContent = userData.app_limit;
 
       appList.innerHTML = '';
       userData.apps.forEach(app => {
@@ -37,12 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('create-app-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
-    formData.append('whatsapp_number', whatsappNumber);
 
     try {
       const response = await fetch('http://localhost:3000/api/apps', {
         method: 'POST',
         body: formData,
+        credentials: 'include' // Important for sending cookies
       });
       if(response.ok) {
         alert('App creation process started!');

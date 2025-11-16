@@ -1,40 +1,54 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 </head>
 <body>
-  <h1>User Dashboard</h1>
-  <p>Welcome, <span id="whatsapp-number"></span>!</p>
-  <p>App Limit: <span id="app-limit"></span></p>
-
-  <h2>Create New App</h2>
-  <form id="create-app-form" enctype="multipart/form-data">
-    <label for="app-name">App Name:</label>
-    <input type="text" id="app-name" name="app_name" required><br><br>
-    <label for="package-name">Package Name:</label>
-    <input type="text" id="package-name" name="package_name" required><br><br>
-    <label for="app-url">App URL:</label>
-    <input type="text" id="app-url" name="app_url" required><br><br>
-    <label for="app-icon">App Icon:</label>
-    <input type="file" id="app-icon" name="app_icon" accept="image/png" required><br><br>
-    <button type="submit">Create App</button>
-  </form>
-
-  <h2>My Apps</h2>
-  <table border="1">
-    <thead>
-      <tr>
-        <th>App Name</th>
-        <th>Status</th>
-        <th>Download</th>
-      </tr>
-    </thead>
-    <tbody id="app-list">
-      <!-- App list will be populated here -->
-    </tbody>
-  </table>
-
+  <main class="container">
+    <nav>
+      <ul>
+        <li><strong>User Dashboard</strong></li>
+      </ul>
+      <ul>
+        <li>Welcome, <span id="whatsapp-number"></span>!</li>
+        <li>App Limit: <span id="app-limit"></span></li>
+      </ul>
+    </nav>
+    <article>
+      <h2>Create New App</h2>
+      <form id="create-app-form" enctype="multipart/form-data">
+        <label for="app-name">App Name</label>
+        <input type="text" id="app-name" name="app_name" placeholder="My Awesome App" required>
+        <label for="package-name">Package Name</label>
+        <input type="text" id="package-name" name="package_name" placeholder="com.example.app" required>
+        <label for="app-url">App URL</label>
+        <input type="text" id="app-url" name="app_url" placeholder="https://example.com" required>
+        <label for="app-icon">App Icon (PNG)</label>
+        <input type="file" id="app-icon" name="app_icon" accept="image/png" required>
+        <button type="submit">Create App</button>
+      </form>
+    </article>
+    <article>
+      <h2>My Apps</h2>
+      <figure>
+        <table role="grid">
+          <thead>
+            <tr>
+              <th>App Name</th>
+              <th>Status</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody id="app-list">
+            <!-- App list will be populated here -->
+          </tbody>
+        </table>
+      </figure>
+    </article>
+  </main>
   <script src="dashboard.js"></script>
 </body>
 </html>

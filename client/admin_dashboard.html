@@ -1,35 +1,47 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css">
 </head>
 <body>
-  <h1>Admin Dashboard</h1>
-
-  <h2>API Settings</h2>
-  <form id="api-settings-form">
-    <label for="api-key">API Key:</label>
-    <input type="text" id="api-key" name="api-key" required><br><br>
-    <label for="device-id">Device ID:</label>
-    <input type="text" id="device-id" name="device-id" required><br><br>
-    <button type="submit">Save Settings</button>
-  </form>
-
-  <h2>User App Limits</h2>
-  <table border="1">
-    <thead>
-      <tr>
-        <th>User ID</th>
-        <th>WhatsApp Number</th>
-        <th>App Limit</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="user-list">
-      <!-- User list will be populated here -->
-    </tbody>
-  </table>
-
+  <main class="container">
+    <nav>
+      <ul>
+        <li><strong>Admin Dashboard</strong></li>
+      </ul>
+    </nav>
+    <article>
+      <h2>API Settings</h2>
+      <form id="api-settings-form">
+        <label for="api-key">API Key</label>
+        <input type="text" id="api-key" name="api-key" placeholder="API Key" required>
+        <label for="device-id">Device ID</label>
+        <input type="text" id="device-id" name="device-id" placeholder="Device ID" required>
+        <button type="submit">Save Settings</button>
+      </form>
+    </article>
+    <article>
+      <h2>User App Limits</h2>
+      <figure>
+        <table role="grid">
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>WhatsApp Number</th>
+              <th>App Limit</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="user-list">
+            <!-- User list will be populated here -->
+          </tbody>
+        </table>
+      </figure>
+    </article>
+  </main>
   <script src="admin_dashboard.js"></script>
 </body>
 </html>
